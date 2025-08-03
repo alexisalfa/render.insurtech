@@ -1,51 +1,37 @@
-import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from app.models.base import Base  # Asegúrate de que esta importación sea correcta
 
-# Cargar variables de entorno desde un archivo .env si existe (solo para desarrollo local)
-load_dotenv()
-
-# Obtener la URL de la base de datos de la variable de entorno
-# En Render, se usará la DATABASE_URL que configuraste.
-# En local, se usará la que esté en tu archivo .env.
-# Es CRUCIAL que el .env exista y tenga la variable, o se usará la URL por defecto.
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-# Si la variable de entorno no está definida, muestra un error
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL no está configurada. Por favor, define la variable de entorno.")
-
-# Crear el motor de la base de datos
-engine = create_engine(DATABASE_URL)
-
-# Configurar la clase Base para la declaración de modelos
-Base = declarative_base()
-
-# Configurar SessionLocal para la creación de sesiones de base de datos
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def get_db():
-    """Dependencia para obtener una sesión de base de datos."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def init_db():
+def init_db(database_url: str):
     """
-    Función para crear todas las tablas en la base de datos.
-    Esta función solo se debe usar para la configuración inicial en Render.
+    Inicializa la base de datos, crea todas las tablas y maneja la conexión de forma segura.
+    
+    Args:
+        database_url: La URL de conexión a la base de datos.
     """
-    print("DEBUG DB: [INIT_DB] Intentando crear todas las tablas...")
     try:
-        # Aquí se crea una conexión real para ejecutar el DDL
-        with engine.connect() as connection:
-            connection.begin()
+        # Crea el motor de la base de datos
+        engine = create_engine(database_url)
+
+        # Intenta conectar y crear las tablas
+        print("DEBUG DB: [INIT_DB] Intentando crear todas las tablas...")
+        
+        # Usa un bloque de conexión segura con 'begin()' que maneja automáticamente el commit y rollback
+        # Esto es más seguro y evita el error de 'commit'
+        with engine.begin() as connection:
             Base.metadata.create_all(bind=connection)
-            connection.commit()
-        print("DEBUG DB: [INIT_DB] Tablas creadas exitosamente.")
-    except Exception as e:
+            print("DEBUG DB: [INIT_DB] Tablas creadas correctamente.")
+
+        # Opcional: crea una sesión para el resto de la aplicación
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        print("DEBUG BACKEND: [STARTUP] Base de datos inicializada.")
+
+    except SQLAlchemyError as e:
+        # Imprime el error si algo falla al crear las tablas
         print(f"ERROR DB: [INIT_DB] Error al crear las tablas: {e}")
+    except Exception as e:
+        # Maneja cualquier otro error inesperado
+        print(f"ERROR DB: [INIT_DB] Error inesperado: {e}")
+
 

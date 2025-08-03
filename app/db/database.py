@@ -22,3 +22,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Crea la clase base de la que heredarán todos tus modelos (tablas)
 Base = declarative_base()
+
+
+# Función para obtener una sesión de base de datos
+def get_db():
+    """
+    Función de dependencia para obtener una sesión de base de datos.
+    Crea una sesión, la usa y luego la cierra.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+

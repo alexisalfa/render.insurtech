@@ -4,9 +4,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Any
 from datetime import timedelta, datetime, timezone
+import os
 
 # Importaciones de modelos y utilidades
-from app.db.database import get_db, init_db
+from app.db.database import get_db, engine, Base  # Importado 'engine' y 'Base' para la inicialización
 from app.models.user import User, UserCreate, UserRead, UserLogin, Token, LicenseStatusResponse
 # Importar TODOS los routers que hemos creado. Es CRÍTICO que todos estén aquí.
 # ¡Basado en tu main.py que funcionaba!
@@ -22,16 +23,30 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Función para inicializar la base de datos y crear las tablas
+def init_db():
+    """
+    Inicializa la base de datos, creando todas las tablas.
+    """
+    try:
+        print("DEBUG BACKEND: [STARTUP] Inicializando base de datos...")
+        # Usa 'engine.begin()' para manejar la transacción de forma segura
+        # Esto soluciona el error 'Connection' object has no attribute 'commit'
+        with engine.begin() as connection:
+            Base.metadata.create_all(bind=connection)
+            print("DEBUG BACKEND: [STARTUP] Tablas creadas correctamente.")
+    except Exception as e:
+        print(f"ERROR DB: [INIT_DB] Error al crear las tablas: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     """
     Evento que se ejecuta al iniciar la aplicación FastAPI.
     Se encarga de inicializar la base de datos, creando todas las tablas
     definidas en los modelos si no existen.
-    También imprime todas las rutas registradas para depuración.
     """
-    print("DEBUG BACKEND: [STARTUP] Inicializando base de datos...")
-    init_db() # Llama a la función que crea las tablas
+    # Llama a la nueva función de inicialización de la base de datos
+    init_db() 
     print("DEBUG BACKEND: [STARTUP] Base de datos inicializada.")
 
     # --- INICIO DE CÓDIGO DE DEPURACIÓN DE RUTAS ---

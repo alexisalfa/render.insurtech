@@ -1,37 +1,23 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
-from app.models.base import Base  # Asegúrate de que esta importación sea correcta
+from sqlalchemy.ext.declarative import declarative_base
 
-def init_db(database_url: str):
-    """
-    Inicializa la base de datos, crea todas las tablas y maneja la conexión de forma segura.
-    
-    Args:
-        database_url: La URL de conexión a la base de datos.
-    """
-    try:
-        # Crea el motor de la base de datos
-        engine = create_engine(database_url)
+# La URL de tu base de datos, que se carga desde una variable de entorno.
+# Asegúrate de que esta variable 'DATABASE_URL' esté configurada en Render.
+DATABASE_URL = "postgresql://user:password@host:port/dbname" 
 
-        # Intenta conectar y crear las tablas
-        print("DEBUG DB: [INIT_DB] Intentando crear todas las tablas...")
-        
-        # Usa un bloque de conexión segura con 'begin()' que maneja automáticamente el commit y rollback
-        # Esto es más seguro y evita el error de 'commit'
-        with engine.begin() as connection:
-            Base.metadata.create_all(bind=connection)
-            print("DEBUG DB: [INIT_DB] Tablas creadas correctamente.")
+# Crea el motor de la base de datos
+# El 'echo=True' es opcional, muestra las sentencias SQL en la consola para depuración
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
 
-        # Opcional: crea una sesión para el resto de la aplicación
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        print("DEBUG BACKEND: [STARTUP] Base de datos inicializada.")
+# Crea una sesión local. Esta es la clase que se usará para crear sesiones.
+# El 'autocommit=False' asegura que las transacciones no se guarden automáticamente
+# El 'autoflush=False' desactiva el vaciado automático de la sesión
+# El 'bind=engine' conecta la sesión al motor de la base de datos
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    except SQLAlchemyError as e:
-        # Imprime el error si algo falla al crear las tablas
-        print(f"ERROR DB: [INIT_DB] Error al crear las tablas: {e}")
-    except Exception as e:
-        # Maneja cualquier otro error inesperado
-        print(f"ERROR DB: [INIT_DB] Error inesperado: {e}")
+# Crea una clase base declarativa.
+# Esta es la base de la que heredarán todos tus modelos (tablas)
+Base = declarative_base()
 
 

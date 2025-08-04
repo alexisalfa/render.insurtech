@@ -47,36 +47,18 @@ function EmpresaAseguradoraForm({
     }
   }, [editingEmpresaAseguradora, setFormData]);
 
-  // Manejador genérico de cambios para los inputs de tipo texto
+  // Manejador genérico de cambios para los inputs de tipo texto, tel, etc.
   const handleChange = useCallback(
     (e) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
+      // Añade esta línea para depurar y verificar que el estado se actualiza.
+      console.log(`DEBUG: handleChange - name: ${name}, value: ${value}`);
       if (error) setError(null); // Limpiar error al empezar a escribir
     },
     [setFormData, error]
   );
   
-  // Manejador específico para el componente de fecha
-  const handleDateChange = useCallback(
-    (date) => {
-      // El componente StyledFormField ya nos devuelve el objeto Date
-      setFormData((prev) => ({ ...prev, fecha_contratacion: date }));
-      if (error) setError(null); // Limpiar error
-    },
-    [setFormData, error]
-  );
-
-  // Manejador específico para el componente de selección
-  const handleSelectChange = useCallback(
-    (value) => {
-      // El componente StyledFormField ya nos devuelve el valor directamente
-      setFormData((prev) => ({ ...prev, empresa_aseguradora_id: value }));
-      if (error) setError(null); // Limpiar error
-    },
-    [setFormData, error]
-  );
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -189,22 +171,6 @@ function EmpresaAseguradoraForm({
           className="md:col-span-2"
           error={error && error.includes('dirección') ? error : null}
         />
-
-        {/* NOTA: Este es un campo extra que estaba en ClientForm pero no en EmpresaAseguradoraForm,
-                así que lo dejo comentado. Si lo necesitas, descoméntalo y ajusta el `name` y `value`.
-        <StyledFormField
-          label="Fecha de Contratación"
-          id="fecha_contratacion"
-          name="fecha_contratacion"
-          type="date"
-          value={formData.fecha_contratacion}
-          onDateSelect={handleDateChange}
-          placeholder="Selecciona una fecha"
-          required
-          disabled={isSubmitting}
-          error={error && error.includes('fecha_contratacion') ? error : null}
-        />
-        */}
 
         {error && <p className="text-red-500 text-sm md:col-span-2">{error}</p>}
 

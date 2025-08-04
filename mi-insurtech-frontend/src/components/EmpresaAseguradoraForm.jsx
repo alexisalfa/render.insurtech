@@ -69,7 +69,7 @@ function EmpresaAseguradoraForm({
       return;
     }
 
-    // CORRECCIÓN: La URL para crear un registro es solo /empresas_aseguradoras/
+    // La URL para crear un registro es solo /empresas_aseguradoras/
     const url = editingEmpresaAseguradora
       ? `${API_URL}/empresas_aseguradoras/${editingEmpresaAseguradora.id}`
       : `${API_URL}/empresas_aseguradoras/`;
@@ -127,7 +127,7 @@ function EmpresaAseguradoraForm({
           value={formData.nombre || ''} // Asegurar que siempre sea string
           onChange={handleChange}
           required
-          disabled={isAuthLoading || isSubmitting}
+          disabled={isSubmitting}
           className="md:col-span-2"
           error={error && error.includes('nombre') ? error : null}
         />
@@ -141,7 +141,7 @@ function EmpresaAseguradoraForm({
           value={formData.rif || ''} // Asegurar que siempre sea string
           onChange={handleChange}
           required
-          disabled={isAuthLoading || isSubmitting}
+          disabled={isSubmitting}
           error={error && error.includes('RIF') ? error : null}
         />
 
@@ -153,7 +153,7 @@ function EmpresaAseguradoraForm({
           placeholder="Número de teléfono (Ej: +584123456789)"
           value={formData.telefono || ''} // Asegurar que siempre sea string
           onChange={handleChange}
-          disabled={isAuthLoading || isSubmitting}
+          disabled={isSubmitting}
           error={error && error.includes('teléfono') ? error : null}
         />
 
@@ -165,7 +165,7 @@ function EmpresaAseguradoraForm({
           placeholder="Dirección completa de la empresa"
           value={formData.direccion || ''} // Asegurar que siempre sea string
           onChange={handleChange}
-          disabled={isAuthLoading || isSubmitting}
+          disabled={isSubmitting}
           className="md:col-span-2"
           error={error && error.includes('dirección') ? error : null}
         />
@@ -174,11 +174,11 @@ function EmpresaAseguradoraForm({
 
         <div className="md:col-span-2 flex justify-end space-x-4 mt-6">
           {editingEmpresaAseguradora && (
-            <SecondaryButton onClick={onCancelEdit} type="button" disabled={isSubmitting || isAuthLoading}>
+            <SecondaryButton onClick={onCancelEdit} type="button" disabled={isSubmitting}>
               Cancelar Edición
             </SecondaryButton>
           )}
-          <PrimaryButton type="submit" disabled={isSubmitting || isAuthLoading}>
+          <PrimaryButton type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Guardando...' : (editingEmpresaAseguradora ? 'Actualizar Empresa' : 'Registrar Empresa')}
           </PrimaryButton>
         </div>

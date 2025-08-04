@@ -38,7 +38,7 @@ function EmpresaAseguradoraForm({
 }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null); // Nuevo estado para manejar errores de la API
+  const [error, setError] = useState(null);
 
   // Efecto para cargar los datos de la empresa si estamos editando
   useEffect(() => {
@@ -47,18 +47,25 @@ function EmpresaAseguradoraForm({
     }
   }, [editingEmpresaAseguradora, setFormData]);
 
-  // Manejador genérico de cambios para los inputs de tipo texto, tel, etc.
+  // Manejador genérico de cambios para los inputs de tipo texto
   const handleChange = useCallback(
     (e) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
-      // Añade esta línea para depurar y verificar que el estado se actualiza.
-      console.log(`DEBUG: handleChange - name: ${name}, value: ${value}`);
-      if (error) setError(null); // Limpiar error al empezar a escribir
+      if (error) setError(null);
     },
     [setFormData, error]
   );
   
+  // Manejador específico para el componente de fecha
+  const handleDateChange = useCallback(
+    (date) => {
+      setFormData((prev) => ({ ...prev, fecha_contratacion: date }));
+      if (error) setError(null);
+    },
+    [setFormData, error]
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -71,7 +78,6 @@ function EmpresaAseguradoraForm({
       return;
     }
 
-    // La URL para crear un registro es solo /empresas_aseguradoras/
     const url = editingEmpresaAseguradora
       ? `${API_URL}/empresas_aseguradoras/${editingEmpresaAseguradora.id}`
       : `${API_URL}/empresas_aseguradoras/`;
@@ -85,7 +91,11 @@ function EmpresaAseguradoraForm({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          // La API puede esperar la fecha como un string ISO
+          fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString() : undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -124,6 +134,7 @@ function EmpresaAseguradoraForm({
         <StyledFormField
           label="Nombre"
           id="nombre"
+          name="nombre"
           type="text"
           placeholder="Nombre de la empresa"
           value={formData.nombre || ''}
@@ -138,6 +149,7 @@ function EmpresaAseguradoraForm({
         <StyledFormField
           label="RIF"
           id="rif"
+          name="rif"
           type="text"
           placeholder="Ej: J-123456789"
           value={formData.rif || ''}
@@ -151,6 +163,7 @@ function EmpresaAseguradoraForm({
         <StyledFormField
           label="Teléfono"
           id="telefono"
+          name="telefono"
           type="tel"
           placeholder="Número de teléfono (Ej: +584123456789)"
           value={formData.telefono || ''}
@@ -163,6 +176,7 @@ function EmpresaAseguradoraForm({
         <StyledFormField
           label="Dirección"
           id="direccion"
+          name="direccion"
           type="text"
           placeholder="Dirección completa de la empresa"
           value={formData.direccion || ''}
@@ -171,6 +185,22 @@ function EmpresaAseguradoraForm({
           className="md:col-span-2"
           error={error && error.includes('dirección') ? error : null}
         />
+
+        {/* Campo Fecha de Contratación (Añadido para el ejemplo) */}
+        {/*
+        <StyledFormField
+          label="Fecha de Contratación"
+          id="fecha_contratacion"
+          name="fecha_contratacion"
+          type="date"
+          value={formData.fecha_contratacion}
+          onDateSelect={handleDateChange}
+          placeholder="Selecciona una fecha"
+          required
+          disabled={isSubmitting}
+          error={error && error.includes('fecha') ? error : null}
+        />
+        */}
 
         {error && <p className="text-red-500 text-sm md:col-span-2">{error}</p>}
 

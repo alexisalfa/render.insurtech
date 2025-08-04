@@ -67,7 +67,7 @@ const StyledFormField = React.forwardRef(
         {type === 'select' ? (
           <Select 
             value={value} 
-            onValueChange={handleSelectChange} // Corregido para usar el manejador interno
+            onValueChange={handleSelectChange} // Usa el manejador interno para el select
             disabled={disabled}
           >
             <SelectTrigger
@@ -110,7 +110,7 @@ const StyledFormField = React.forwardRef(
               <Calendar
                 mode="single"
                 selected={value instanceof Date && !isNaN(value) ? value : undefined}
-                onSelect={handleCalendarSelect} // Corregido para usar el manejador interno
+                onSelect={handleCalendarSelect} // Usa el manejador interno para el calendario
                 initialFocus
                 locale={es} // Establecer idioma español para el calendario
                 captionLayout="dropdown"

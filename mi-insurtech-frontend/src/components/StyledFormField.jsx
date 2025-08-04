@@ -38,14 +38,11 @@ const StyledFormField = React.forwardRef(
     },
     ref
   ) => {
-    // console.log(`DEBUG StyledFormField (${name || id}): type=${type}, received value=`, value);
-
     const commonInputClasses = 'border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
     
     // Función para manejar el cambio en el calendario y propagarlo al padre
     const handleCalendarSelect = (date) => {
-      // Si el padre tiene una función onDateSelect, la llamamos.
-      // Esto es crucial para asegurar que el componente padre actualice su estado.
+      // Llamar directamente a la función del padre con el objeto Date
       if (onDateSelect) {
         onDateSelect(date);
       }
@@ -53,8 +50,9 @@ const StyledFormField = React.forwardRef(
     
     // Función para manejar el cambio en el select y propagarlo al padre
     const handleSelectChange = (val) => {
+      // Llamar directamente a la función del padre con el valor
       if (onValueChange) {
-        onValueChange({ target: { name, value: val } });
+        onValueChange(val);
       }
     };
 
@@ -69,7 +67,7 @@ const StyledFormField = React.forwardRef(
         {type === 'select' ? (
           <Select 
             value={value} 
-            onValueChange={handleSelectChange} 
+            onValueChange={handleSelectChange} // Corregido para usar el manejador interno
             disabled={disabled}
           >
             <SelectTrigger
@@ -112,7 +110,7 @@ const StyledFormField = React.forwardRef(
               <Calendar
                 mode="single"
                 selected={value instanceof Date && !isNaN(value) ? value : undefined}
-                onSelect={handleCalendarSelect} // Se asegura de que el manejador interno sea llamado
+                onSelect={handleCalendarSelect} // Corregido para usar el manejador interno
                 initialFocus
                 locale={es} // Establecer idioma español para el calendario
                 captionLayout="dropdown"
@@ -132,7 +130,7 @@ const StyledFormField = React.forwardRef(
             disabled={disabled}
             ref={ref}
             className={cn(commonInputClasses, error ? 'border-red-500' : 'border-gray-300')} // Aplicar estilos comunes y de error
-            value={value} // Ahora el valor es directamente la prop
+            value={value} // El valor es directamente la prop
             onChange={onChange} // Y el manejador es directamente la prop
             autoComplete="off" // Deshabilita el autocompletar del navegador
             step={type === 'number' ? step : undefined} // Añadir la prop step solo para tipo number
@@ -147,3 +145,4 @@ const StyledFormField = React.forwardRef(
 StyledFormField.displayName = 'StyledFormField';
 
 export default StyledFormField;
+

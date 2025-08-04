@@ -283,7 +283,7 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
           name="fecha_nacimiento"
           type="date"
           value={formData.fecha_nacimiento}
-          onChange={handleDateChange} // Asegúrate de que handleDateChange reciba el objeto Date
+          onDateSelect={handleDateChange} // Asegúrate de que handleDateChange reciba el objeto Date
           placeholder="Selecciona una fecha"
           required
           error={errors.fecha_nacimiento}

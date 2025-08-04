@@ -59,11 +59,14 @@ const StyledFormField = React.forwardRef(
     };
 
     // Manejador de cambios para el calendario
+    // Este es el ajuste clave. Ahora se asegura de pasar la fecha directamente.
     const handleCalendarSelect = (date) => {
       // console.log(`DEBUG StyledFormField (${name || id}): handleCalendarSelect called with date:`, date);
-      if (onDateSelect) { // Priorizar onDateSelect si existe
+      // Se da prioridad a onDateSelect si está disponible.
+      if (onDateSelect) { 
         onDateSelect(date);
-      } else if (onChange) { // Fallback: si no hay onDateSelect, usar onChange con un evento sintético
+      } else if (onChange) { 
+        // Si no hay onDateSelect, se usa onChange con un evento sintético.
         onChange({ target: { id: id, value: date } });
       }
     };
@@ -103,7 +106,7 @@ const StyledFormField = React.forwardRef(
             </SelectTrigger>
             <SelectContent className="z-50 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-md shadow-lg">
               {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={String(option.value)}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -135,9 +138,12 @@ const StyledFormField = React.forwardRef(
               <Calendar
                 mode="single"
                 selected={value instanceof Date && !isNaN(value) ? value : undefined}
-                onSelect={handleCalendarSelect} // Usar el manejador interno
+                onSelect={handleCalendarSelect} // Se asegura de que el manejador interno sea llamado
                 initialFocus
                 locale={es} // Establecer idioma español para el calendario
+                captionLayout="dropdown"
+                fromYear={1920}
+                toYear={new Date().getFullYear()}
               />
             </PopoverContent>
           </Popover>
@@ -155,7 +161,7 @@ const StyledFormField = React.forwardRef(
             value={inputValue} // Asegura que el valor del input esté vinculado al estado
             onChange={handleInputChange} // Asegura que los cambios se propaguen al estado
             autoComplete="off" // Deshabilita el autocompletar del navegador
-            step={step} // Añadir la prop step aquí
+            step={type === 'number' ? step : undefined} // Añadir la prop step solo para tipo number
           />
         )}
         {error && <p className="text-red-500 text-sm mt-1">{error}</p>}

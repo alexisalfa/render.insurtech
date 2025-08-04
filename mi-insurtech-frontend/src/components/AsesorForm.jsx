@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 // Importar los nuevos componentes reutilizables
 import FormContainer from './FormContainer';
-import StyledFormField from './StyledFormField'; // Asegúrate de que esta ruta sea correcta
+import StyledFormField from './StyledFormField';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
@@ -33,7 +33,7 @@ function AsesorForm({
   API_URL,
   isAuthLoading,
 }) {
-  const { toast } = useToast(); // Hook para usar las notificaciones de Toast
+  const { toast } = useToast();
 
   // Estado inicial del formulario
   const initialFormData = {
@@ -42,13 +42,13 @@ function AsesorForm({
     email: '',
     telefono: '',
     cedula: '',
-    fecha_contratacion: undefined, // ¡CRÍTICO! Usar undefined o null para el DatePicker
-    empresa_aseguradora_id: '', // ¡CRÍTICO! Usar string vacío para el Select
+    fecha_contratacion: undefined,
+    empresa_aseguradora_id: '',
   };
 
   const [formData, setFormData] = useState(initialFormData);
-  const [errors, setErrors] = useState({}); // Estado para errores de validación de campos
-  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para controlar el envío del formulario
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Efecto para cargar los datos del asesor si estamos editando
   useEffect(() => {
@@ -59,27 +59,45 @@ function AsesorForm({
         email: editingAsesor.email || '',
         telefono: editingAsesor.telefono || '',
         cedula: editingAsesor.cedula || '',
-        // ¡CRÍTICO! Convertir la fecha de string ISO a objeto Date si existe, o undefined
         fecha_contratacion: editingAsesor.fecha_contratacion ? new Date(editingAsesor.fecha_contratacion) : undefined,
-        // ¡CRÍTICO! Asegurarse de que el ID de la empresa sea un string para el select
+        // Asegurarse de que el ID de la empresa sea un string para el select
         empresa_aseguradora_id: String(editingAsesor.empresa_aseguradora_id || ''),
       });
     } else {
-      // Reiniciar el formulario si no estamos editando o se ha guardado uno nuevo
       setFormData(initialFormData);
     }
-    setErrors({}); // Limpiar errores al cambiar de asesor
-  }, [editingAsesor]); // Dependencia: re-ejecutar cuando editingAsesor cambie
+    setErrors({});
+  }, [editingAsesor]);
 
-  // ¡CRÍTICO! Manejador de cambios genérico para todos los campos
+  // Manejador de cambios genérico para inputs de texto
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // DEBUG: Log para ver el cambio en el formulario
-    console.log(`DEBUG AsesorForm: handleChange - name: ${name}, value:`, value);
-
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Limpiar el error del campo cuando el usuario empieza a escribir
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+  
+  // Manejador de cambios específico para el calendario
+  const handleDateChange = (date) => {
+    setFormData((prev) => ({ ...prev, fecha_contratacion: date }));
+    if (errors.fecha_contratacion) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.fecha_contratacion;
+        return newErrors;
+      });
+    }
+  };
+
+  // ¡NUEVO! Manejador de cambios específico para el Select
+  const handleSelectChange = (value) => {
+    const name = "empresa_aseguradora_id";
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -111,63 +129,40 @@ function AsesorForm({
     if (formData.telefono && !/^\+?[0-9\s-()]{7,20}$/.test(formData.telefono)) {
       newErrors.telefono = 'El formato del teléfono no es válido.';
     }
-    // ¡CRÍTICO! Validar que fecha_contratacion sea un objeto Date válido
-    if (!(formData.fecha_contratacion instanceof Date) || isNaN(formData.fecha_contratacion)) {
-      newErrors.fecha_contratacion = 'La fecha de contratación es obligatoria y debe ser válida.';
+    if (!formData.fecha_contratacion) { 
+      newErrors.fecha_contratacion = 'La fecha de contratación es obligatoria.';
     }
+    // ¡CRÍTICO! Validar que el ID no sea una cadena vacía
     if (!formData.empresa_aseguradora_id) {
       newErrors.empresa_aseguradora_id = 'La empresa aseguradora es obligatoria.';
     }
-
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Retorna true si no hay errores
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
-      toast({
-        title: "Errores de Formulario",
-        description: "Por favor, corrige los errores en el formulario antes de guardar.",
-        variant: "destructive",
-      });
+      toast({ title: "Errores de validación", description: "Por favor, corrige los campos marcados.", variant: "destructive" });
       return;
     }
-
     setIsSubmitting(true);
-    
-    // OBTENER EL TOKEN DEL LOCALSTORAGE
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-    if (!token) {
-      toast({
-        title: "Error de Autenticación",
-        description: "No se encontró el token de acceso. Por favor, inicia sesión.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Preparar los datos para enviar al API
+    
+    // Convertir la fecha de contratación a string ISO para la API
     const dataToSend = {
       ...formData,
-      // Asegurarse de que empresa_aseguradora_id sea un número o null
-      empresa_aseguradora_id: formData.empresa_aseguradora_id ? Number(formData.empresa_aseguradora_id) : null,
-      // Convertir el objeto Date a string ISO si existe y es válido, o null si es undefined/inválido
-      fecha_contratacion: (formData.fecha_contratacion instanceof Date && !isNaN(formData.fecha_contratacion)) 
-                          ? formData.fecha_contratacion.toISOString() 
-                          : null,
+      fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString().split('T')[0] : null,
+      // Asegurarse de que el ID de la empresa sea un número para la API
+      empresa_aseguradora_id: Number(formData.empresa_aseguradora_id),
     };
 
-    const url = editingAsesor
-      ? `${API_URL}/asesores/${editingAsesor.id}/` // URL para PUT (con barra final)
-      : `${API_URL}/asesores/`; // URL para POST (con barra final)
+    const url = editingAsesor ? `${API_URL}/asesores/${editingAsesor.id}` : `${API_URL}/asesores/`;
     const method = editingAsesor ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(url, {
-        method,
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -176,26 +171,23 @@ function AsesorForm({
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Error desconocido en el servidor.' }));
-        const errorMessage = errorData.detail || `Error ${response.status}: ${response.statusText}`;
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al guardar el asesor.');
       }
-
-      setFormData(initialFormData); // Limpiar el formulario
-      setEditingAsesor(null); // Desactivar modo edición
-      onAsesorSaved(); // Recargar la lista de asesores en el componente padre
-
+      
+      const savedAsesor = await response.json();
+      onAsesorSaved(savedAsesor);
+      
       toast({
-        title: "Asesor Guardado",
-        description: `El asesor ha sido ${editingAsesor ? 'actualizado' : 'creado'} con éxito.`,
-        variant: "success",
+        title: "Éxito",
+        description: editingAsesor ? "Asesor actualizado correctamente." : "Asesor creado correctamente.",
       });
-
-    } catch (err) {
-      console.error('Error al guardar asesor:', err);
+      
+    } catch (error) {
+      console.error('Error:', error);
       toast({
-        title: "Error de Conexión/API",
-        description: err.message,
+        title: "Error",
+        description: error.message || "Ocurrió un error inesperado al guardar el asesor.",
         variant: "destructive",
       });
     } finally {
@@ -205,27 +197,23 @@ function AsesorForm({
 
   const handleCancelEdit = () => {
     setEditingAsesor(null);
-    setFormData(initialFormData); // Resetear a los valores iniciales
-    setErrors({}); // Limpiar errores
+    setFormData(initialFormData);
   };
 
   return (
-    <FormContainer
-      title={editingAsesor ? 'Editar Asesor' : 'Crear Nuevo Asesor'}
-      className="mb-8"
-    >
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <FormContainer title={editingAsesor ? `Editar Asesor: ${editingAsesor.nombre} ${editingAsesor.apellido}` : "Nuevo Asesor"}>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         {/* Campo Nombre */}
         <StyledFormField
           label="Nombre"
           id="nombre"
           name="nombre"
-          type="text"
-          value={formData.nombre} // ¡CRÍTICO! Pasar el valor del estado
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
-          placeholder="Nombre del asesor"
+          value={formData.nombre}
+          onChange={handleChange}
+          placeholder="Ej: Juan"
           required
           error={errors.nombre}
+          disabled={isSubmitting || isAuthLoading}
         />
 
         {/* Campo Apellido */}
@@ -233,12 +221,12 @@ function AsesorForm({
           label="Apellido"
           id="apellido"
           name="apellido"
-          type="text"
-          value={formData.apellido} // ¡CRÍTICO! Pasar el valor del estado
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
-          placeholder="Apellido del asesor"
+          value={formData.apellido}
+          onChange={handleChange}
+          placeholder="Ej: Pérez"
           required
           error={errors.apellido}
+          disabled={isSubmitting || isAuthLoading}
         />
 
         {/* Campo Cédula */}
@@ -246,12 +234,12 @@ function AsesorForm({
           label="Cédula"
           id="cedula"
           name="cedula"
-          type="text"
-          value={formData.cedula} // ¡CRÍTICO! Pasar el valor del estado
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
-          placeholder="Cédula de identidad (Ej: V12345678)"
+          value={formData.cedula}
+          onChange={handleChange}
+          placeholder="V-12345678"
           required
           error={errors.cedula}
+          disabled={isSubmitting || isAuthLoading}
         />
 
         {/* Campo Email */}
@@ -260,11 +248,12 @@ function AsesorForm({
           id="email"
           name="email"
           type="email"
-          value={formData.email} // ¡CRÍTICO! Pasar el valor del estado
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
-          placeholder="email@ejemplo.com"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="ejemplo@correo.com"
           required
           error={errors.email}
+          disabled={isSubmitting || isAuthLoading}
         />
 
         {/* Campo Teléfono */}
@@ -273,23 +262,25 @@ function AsesorForm({
           id="telefono"
           name="telefono"
           type="tel"
-          value={formData.telefono} // ¡CRÍTICO! Pasar el valor del estado
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
-          placeholder="Ej: +584123456789"
+          value={formData.telefono}
+          onChange={handleChange}
+          placeholder="Ej: +58 412-1234567"
           error={errors.telefono}
+          disabled={isSubmitting || isAuthLoading}
         />
 
-        {/* Campo Fecha de Contratación */}
+        {/* Campo Fecha de Contratación (con StyledFormField de tipo 'date') */}
         <StyledFormField
           label="Fecha de Contratación"
           id="fecha_contratacion"
           name="fecha_contratacion"
           type="date"
-          value={formData.fecha_contratacion} // ¡CRÍTICO! Pasar el objeto Date o undefined/null
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
+          value={formData.fecha_contratacion}
+          onDateSelect={handleDateChange}
           placeholder="Selecciona una fecha"
           required
           error={errors.fecha_contratacion}
+          disabled={isSubmitting || isAuthLoading}
         />
 
         {/* Campo Empresa Aseguradora (Select) */}
@@ -297,9 +288,9 @@ function AsesorForm({
           label="Empresa Aseguradora"
           id="empresa_aseguradora_id"
           name="empresa_aseguradora_id"
-          type="select" // Indicar que es un select
-          value={formData.empresa_aseguradora_id} // ¡CRÍTICO! Pasar el ID (string o number)
-          onChange={handleChange} // ¡CRÍTICO! Pasar el manejador de cambios
+          type="select"
+          value={formData.empresa_aseguradora_id}
+          onValueChange={handleSelectChange}
           required
           error={errors.empresa_aseguradora_id}
           options={empresasAseguradoras.map(empresa => ({
@@ -307,7 +298,7 @@ function AsesorForm({
             label: empresa.nombre,
           }))}
           placeholder="Selecciona una empresa"
-          disabled={isLoadingCompanies || isAuthLoading} // Deshabilitar si las empresas están cargando o la autenticación está en curso
+          disabled={isLoadingCompanies || isAuthLoading || isSubmitting}
         />
 
         <div className="md:col-span-2 flex justify-end space-x-4 mt-6">

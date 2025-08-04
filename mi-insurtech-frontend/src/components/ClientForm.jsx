@@ -57,12 +57,13 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
       setFormData(initialFormData);
     }
     setErrors({}); // Limpiar errores al cambiar de cliente
-  }, [editingClient]); // Dependencia: re-ejecutar cuando editingClient cambie
+  }, [editingClient]); // Dependencia: re-ejecutar cuando cambia el cliente a editar
 
+  // Manejador de cambios genérico para inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Limpiar el error del campo cuando el usuario empieza a escribir
+    // Limpiar el error si el campo se modifica
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -72,8 +73,10 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
     }
   };
 
+  // Manejador de cambios específico para el calendario
   const handleDateChange = (date) => {
     setFormData((prev) => ({ ...prev, fecha_nacimiento: date }));
+    // Limpiar el error si el campo se modifica
     if (errors.fecha_nacimiento) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -86,12 +89,8 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
   // Función de validación del formulario
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es obligatorio.';
-    }
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es obligatorio.';
-    }
+    if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio.';
+    if (!formData.apellido.trim()) newErrors.apellido = 'El apellido es obligatorio.';
     if (!formData.cedula.trim()) {
       newErrors.cedula = 'La cédula es obligatoria.';
     } else if (!/^[0-9A-Z]{5,15}$/i.test(formData.cedula)) {
@@ -105,55 +104,36 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
     if (formData.telefono && !/^\+?[0-9\s-()]{7,20}$/.test(formData.telefono)) {
       newErrors.telefono = 'El formato del teléfono no es válido.';
     }
-    if (formData.fecha_nacimiento === undefined || formData.fecha_nacimiento === null) { // Validar que la fecha de nacimiento no esté vacía
-      newErrors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria.';
+    if (!formData.fecha_nacimiento) {
+        newErrors.fecha_nacimiento = 'La fecha de nacimiento es obligatoria.';
     }
-
+    
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Retorna true si no hay errores
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
-      toast({
-        title: "Errores de Formulario",
-        description: "Por favor, corrige los errores en el formulario antes de guardar.",
-        variant: "destructive",
-      });
+      toast({ title: "Errores de validación", description: "Por favor, corrige los campos marcados.", variant: "destructive" });
       return;
     }
-
     setIsSubmitting(true);
-    
-    // OBTENER EL TOKEN DEL LOCALSTORAGE
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY); // <-- ¡CORRECCIÓN CRÍTICA AQUÍ!
-    if (!token) {
-      toast({
-        title: "Error de Autenticación",
-        description: "No se encontró el token de acceso. Por favor, inicia sesión.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
 
-    // Preparar los datos para enviar al API, parseando la fecha
+    // Convertir la fecha a string ISO para la API
     const dataToSend = {
       ...formData,
-      // Convertir el objeto Date a string ISO si existe, o null si es undefined
-      fecha_nacimiento: formData.fecha_nacimiento ? formData.fecha_nacimiento.toISOString() : null,
+      fecha_nacimiento: formData.fecha_nacimiento ? formData.fecha_nacimiento.toISOString().split('T')[0] : null,
     };
 
-    const url = editingClient
-      ? `${API_URL}/clientes/clientes/${editingClient.id}/` // Usar API_URL directamente
-      : `${API_URL}/clientes/clientes/`; // Usar API_URL directamente
+    // CORRECCIÓN: Ajustar la URL para que sea /clientes/ al crear uno nuevo
+    const url = editingClient ? `${API_URL}/clientes/${editingClient.id}` : `${API_URL}/clientes/`;
     const method = editingClient ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(url, {
-        method,
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -162,26 +142,23 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Error desconocido en el servidor.' }));
-        const errorMessage = errorData.detail || `Error ${response.status}: ${response.statusText}`;
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al guardar cliente.');
       }
-
-      setFormData(initialFormData); // Limpiar el formulario
-      setEditingClient(null); // Desactivar modo edición
-      onClientSaved(); // Recargar la lista de clientes en el componente padre y actualizar dashboard
-
+      
+      const savedClient = await response.json();
+      onClientSaved(savedClient); // Llamar al callback para actualizar la lista en el padre
+      
       toast({
-        title: "Cliente Guardado",
-        description: `El cliente ha sido ${editingClient ? 'actualizado' : 'creado'} con éxito.`,
-        variant: "success",
+        title: "Éxito",
+        description: editingClient ? "Cliente actualizado correctamente." : "Cliente creado correctamente.",
       });
-
-    } catch (err) {
-      console.error('Error al guardar cliente:', err);
+      
+    } catch (error) {
+      console.error('Error:', error);
       toast({
-        title: "Error de Conexión/API",
-        description: err.message,
+        title: "Error",
+        description: error.message || "Ocurrió un error inesperado al guardar el cliente.",
         variant: "destructive",
       });
     } finally {
@@ -190,28 +167,25 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
   };
 
   const handleCancelEdit = () => {
+    // Restaurar los campos a su estado inicial y limpiar el cliente en edición
     setEditingClient(null);
-    setFormData(initialFormData); // Resetear a los valores iniciales
-    setErrors({}); // Limpiar errores
+    setFormData(initialFormData);
+    setErrors({});
   };
 
   return (
-    <FormContainer
-      title={editingClient ? 'Editar Cliente' : 'Crear Nuevo Cliente'}
-      className="mb-8" // Añadir margen inferior al contenedor
-    >
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <FormContainer title={editingClient ? `Editar Cliente: ${editingClient.nombre} ${editingClient.apellido}` : "Nuevo Cliente"}>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         {/* Campo Nombre */}
         <StyledFormField
           label="Nombre"
           id="nombre"
           name="nombre"
-          type="text"
           value={formData.nombre}
           onChange={handleChange}
-          placeholder="Nombre del cliente"
+          placeholder="Ej: Juan"
           required
-          error={errors.nombre} // Pasar el error al componente StyledFormField
+          error={errors.nombre}
         />
 
         {/* Campo Apellido */}
@@ -219,10 +193,9 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
           label="Apellido"
           id="apellido"
           name="apellido"
-          type="text"
           value={formData.apellido}
           onChange={handleChange}
-          placeholder="Apellido del cliente"
+          placeholder="Ej: Pérez"
           required
           error={errors.apellido}
         />
@@ -232,10 +205,9 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
           label="Cédula"
           id="cedula"
           name="cedula"
-          type="text"
           value={formData.cedula}
           onChange={handleChange}
-          placeholder="Cédula de identidad (Ej: V12345678)"
+          placeholder="V-12345678"
           required
           error={errors.cedula}
         />
@@ -248,7 +220,7 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
           type="email"
           value={formData.email}
           onChange={handleChange}
-          placeholder="email@ejemplo.com"
+          placeholder="ejemplo@correo.com"
           required
           error={errors.email}
         />
@@ -261,7 +233,7 @@ function ClientForm({ onClientSaved, editingClient, setEditingClient, API_URL })
           type="tel"
           value={formData.telefono}
           onChange={handleChange}
-          placeholder="Ej: +584123456789"
+          placeholder="Ej: +58 412-1234567"
           error={errors.telefono}
         />
 

@@ -111,6 +111,32 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     print(f"DEBUG BACKEND: [LOGIN] Usuario '{user_obj.username}' autenticado exitosamente. Token generado.")
     return {"access_token": access_token, "token_type": "bearer"}
+    
+# La función authenticate_user corregida para tu archivo app/utils/auth.py
+def authenticate_user(db: Session, username: str, password: str):
+    """
+    Busca un usuario por nombre de usuario y verifica su contraseña.
+    
+    Args:
+        db (Session): La sesión de la base de datos.
+        username (str): El nombre de usuario.
+        password (str): La contraseña proporcionada por el usuario.
+    
+    Returns:
+        User: El objeto de usuario si la autenticación es exitosa, None de lo contrario.
+    """
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        return None
+    
+    # Asumiendo que la clase User tiene un método check_password
+    # que usa passlib para verificar el hash.
+    # Por ejemplo:
+    # return user if pwd_context.verify(password, user.hashed_password) else None
+    
+    if user.check_password(password):
+        return user    
+    return None
 
 @app.get("/api/v1/protected-route/", summary="Ruta protegida para usuarios activos")
 async def protected_route(current_user: User = Depends(get_current_active_user)):

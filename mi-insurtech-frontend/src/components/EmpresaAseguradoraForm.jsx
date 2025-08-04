@@ -34,103 +34,47 @@ function EmpresaAseguradoraForm({
   setEditingEmpresaAseguradora,
   API_URL,
   isAuthLoading,
-  onCancelEdit, // Recibe onCancelEdit del padre
+  onCancelEdit,
 }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null); // Nuevo estado para manejar errores de la API
 
-  // Sincronizar formData cuando editingEmpresaAseguradora cambia (manejo en el padre)
+  // Efecto para cargar los datos de la empresa si estamos editando
   useEffect(() => {
-    console.log("DEBUG: EmpresaAseguradoraForm - editingEmpresaAseguradora changed:", editingEmpresaAseguradora);
-    // El setFormData ya se hace en el padre (EmpresasAseguradorasPage)
-    // Este useEffect es más para depuración si es necesario ver el valor inicial aquí.
-    // La lógica de inicialización y reset ya está en EmpresasAseguradorasPage.
-  }, [editingEmpresaAseguradora]);
+    if (editingEmpresaAseguradora) {
+      setFormData({ ...editingEmpresaAseguradora });
+    }
+  }, [editingEmpresaAseguradora, setFormData]);
 
-  // DEBUG: Log formData cada vez que cambia (para verificar que se actualiza desde el padre)
-  useEffect(() => {
-    console.log("DEBUG: EmpresaAseguradoraForm - formData updated (from parent prop):", formData);
-  }, [formData]);
+  // Manejador genérico de cambios para los inputs
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (error) setError(null); // Limpiar error al empezar a escribir
+    },
+    [setFormData, error]
+  );
 
-  const handleChange = useCallback((e) => {
-    const { id, value } = e.target;
-    console.log(`DEBUG: EmpresaAseguradoraForm - handleChange - id: ${id}, value: ${value}`);
-    setFormData((prevData) => {
-      const newData = {
-        ...prevData,
-        [id]: value,
-      };
-      console.log("DEBUG: EmpresaAseguradoraForm - handleChange - newData (after update):", newData);
-      return newData;
-    });
-    // Limpiar errores específicos al cambiar el campo
-    if (error && error.includes('nombre') && id === 'nombre') setError(null);
-    if (error && error.includes('RIF') && id === 'rif') setError(null);
-    if (error && error.includes('email') && id === 'email') setError(null);
-    if (error && error.includes('teléfono') && id === 'telefono') setError(null);
-    if (error && error.includes('dirección') && id === 'direccion') setError(null);
-  }, [setFormData, error]);
-
-  const validateForm = useCallback(() => {
-    if (!formData.nombre || formData.nombre.trim() === '') {
-      setError('El nombre de la empresa es obligatorio.');
-      toast({ title: "Validación", description: "El nombre de la empresa es obligatorio.", variant: "destructive" });
-      return false;
-    }
-    if (!formData.rif || formData.rif.trim() === '') {
-      setError('El RIF de la empresa es obligatorio.');
-      toast({ title: "Validación", description: "El RIF de la empresa es obligatorio.", variant: "destructive" });
-      return false;
-    }
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('Formato de email inválido.');
-      toast({ title: "Validación", description: "El formato del email es inválido.", variant: "destructive" });
-      return false;
-    }
-    if (!formData.telefono || formData.telefono.trim() === '') {
-      setError('El teléfono de la empresa es obligatorio.');
-      toast({ title: "Validación", description: "El teléfono de la empresa es obligatorio.", variant: "destructive" });
-      return false;
-    }
-    if (!formData.direccion || formData.direccion.trim() === '') {
-      setError('La dirección de la empresa es obligatoria.');
-      toast({ title: "Validación", description: "La dirección de la empresa es obligatoria.", variant: "destructive" });
-      return false;
-    }
-    setError(null);
-    return true;
-  }, [formData, toast]);
-
-  const handleSubmit = useCallback(async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (!token) {
-      setError('No autorizado: No se encontró el token de acceso.');
-      toast({
-        title: "Error de autenticación",
-        description: "No se encontró el token de acceso. Por favor, inicie sesión nuevamente.",
-        variant: "destructive",
-      });
+      setError("No hay token de autenticación. Por favor, inicia sesión.");
       setIsSubmitting(false);
       return;
     }
 
-    const method = editingEmpresaAseguradora ? 'PUT' : 'POST';
-    // URL CORREGIDA: Usar la ruta completa del backend
+    // CORRECCIÓN: La URL para crear un registro es solo /empresas_aseguradoras/
     const url = editingEmpresaAseguradora
-      ? `${API_URL}/empresas_aseguradoras/empresas_aseguradoras/${editingEmpresaAseguradora.id}/`
-      : `${API_URL}/empresas_aseguradoras/empresas_aseguradoras/`;
+      ? `${API_URL}/empresas_aseguradoras/${editingEmpresaAseguradora.id}`
+      : `${API_URL}/empresas_aseguradoras/`;
 
-    console.log(`DEBUG: EmpresaAseguradoraForm - handleSubmit - Enviando ${method} a: ${url}`);
-    console.log("DEBUG: EmpresaAseguradoraForm - handleSubmit - Payload:", formData);
+    const method = editingEmpresaAseguradora ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(url, {
@@ -142,48 +86,49 @@ function EmpresaAseguradoraForm({
         body: JSON.stringify(formData),
       });
 
-      console.log(`DEBUG: EmpresaAseguradoraForm - handleSubmit - Respuesta HTTP Status: ${response.status}`);
-      const result = await response.json();
-      console.log("DEBUG: EmpresaAseguradoraForm - handleSubmit - Respuesta API:", result);
-
       if (!response.ok) {
-        throw new Error(result.detail || result.message || 'Error al guardar la empresa aseguradora.');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al guardar la empresa aseguradora.');
       }
 
+      const savedEmpresa = await response.json();
+      onEmpresaAseguradoraSaved(savedEmpresa);
+
       toast({
-        title: editingEmpresaAseguradora ? "Empresa Actualizada" : "Empresa Registrada",
-        description: `La empresa ${formData.nombre} ha sido ${editingEmpresaAseguradora ? 'actualizada' : 'registrada'} exitosamente.`,
-        variant: "success",
+        title: 'Éxito',
+        description: editingEmpresaAseguradora
+          ? 'Empresa aseguradora actualizada correctamente.'
+          : 'Empresa aseguradora creada correctamente.',
       });
-
-      // Notificar al padre para que recargue la lista y limpie el formulario
-      onEmpresaAseguradoraSaved();
-
     } catch (err) {
-      console.error('ERROR: EmpresaAseguradoraForm - Error saving empresa aseguradora:', err);
-      setError(err.message || 'Ocurrió un error inesperado al procesar la solicitud.');
+      console.error('ERROR:', err);
+      setError(err.message);
       toast({
-        title: "Error",
-        description: err.message || "No se pudo guardar la empresa aseguradora.",
-        variant: "destructive",
+        title: 'Error',
+        description: err.message,
+        variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, editingEmpresaAseguradora, validateForm, API_URL, onEmpresaAseguradoraSaved, toast]);
+  };
 
   return (
-    <FormContainer title={editingEmpresaAseguradora ? "Editar Empresa Aseguradora" : "Registrar Nueva Empresa Aseguradora"}>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <FormContainer
+      title={editingEmpresaAseguradora ? 'Editar Empresa Aseguradora' : 'Registrar Empresa Aseguradora'}
+    >
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         {/* Campo Nombre */}
         <StyledFormField
-          label="Nombre de la Empresa"
+          label="Nombre"
           id="nombre"
           type="text"
-          placeholder="Ej: Seguros Bolívar"
+          placeholder="Nombre de la empresa"
           value={formData.nombre || ''} // Asegurar que siempre sea string
           onChange={handleChange}
+          required
           disabled={isAuthLoading || isSubmitting}
+          className="md:col-span-2"
           error={error && error.includes('nombre') ? error : null}
         />
 
@@ -192,24 +137,14 @@ function EmpresaAseguradoraForm({
           label="RIF"
           id="rif"
           type="text"
-          placeholder="Ej: J-12345678-9"
+          placeholder="Ej: J-123456789"
           value={formData.rif || ''} // Asegurar que siempre sea string
           onChange={handleChange}
+          required
           disabled={isAuthLoading || isSubmitting}
           error={error && error.includes('RIF') ? error : null}
         />
 
-        {/* Campo Email */}
-        <StyledFormField
-          label="Email"
-          id="email"
-          type="email"
-          placeholder="Ej: info@segurosbolivar.com"
-          value={formData.email || ''} // Asegurar que siempre sea string
-          onChange={handleChange}
-          error={error && error.includes('email') ? error : null}
-          disabled={isAuthLoading || isSubmitting}
-        />
         {/* Campo Teléfono */}
         <StyledFormField
           label="Teléfono"

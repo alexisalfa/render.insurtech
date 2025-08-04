@@ -45,11 +45,16 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     """
     Autentica a un usuario verificando sus credenciales.
     """
-    user = db.execute(select(UserModel).where(UserModel.username == username)).scalar_one_or_none()
+    # Se utiliza db.query() para ser coherente, pero la función con db.execute() también funcionaría.
+    user = db.query(UserModel).filter(UserModel.username == username).first()
     if not user:
         return None
+    
+    # La corrección está aquí: Llamar a la función verify_password
+    # y pasarle la contraseña del formulario y la contraseña hasheada del usuario.
     if not verify_password(password, user.hashed_password):
         return None
+        
     return user
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Any:
@@ -106,5 +111,3 @@ async def get_current_active_user(current_user: Any = Depends(get_current_user))
     #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tu cuenta ha sido bloqueada.")
     print(f"DEBUG AUTH: [get_current_active_user] Usuario '{current_user.username}' activo y no bloqueado. Permiso concedido.")
     return current_user
-
-# ¡FUNCIÓN get_current_admin_user ELIMINADA! (Si existía)

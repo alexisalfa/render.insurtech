@@ -129,7 +129,7 @@ const StyledFormField = React.forwardRef(
                 locale={es}
                 captionLayout="dropdown"
                 fromYear={1920}
-                toYear={new Date().getFullYear()}
+                toYear={new Date().getFullYear() + 10}
               />
             </PopoverContent>
           </Popover>

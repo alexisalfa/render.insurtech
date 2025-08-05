@@ -85,6 +85,13 @@ function EmpresaAseguradoraForm({
     const method = editingEmpresaAseguradora ? 'PUT' : 'POST';
 
     try {
+      // ############ LÍNEA AÑADIDA PARA DEPURACIÓN ############
+      console.log('Datos que se enviarán al backend:', {
+        ...formData,
+        fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString() : undefined,
+      });
+      // ########################################################
+
       const response = await fetch(url, {
         method: method,
         headers: {

@@ -40,10 +40,30 @@ function EmpresaAseguradoraForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Estado inicial del formulario. Es importante que todos los campos del modelo de la API estén aquí.
+  const initialFormData = {
+    nombre: '',
+    rif: '',
+    email: '',
+    telefono: '',
+    direccion: '',
+    fecha_contratacion: undefined,
+  };
+
   // Efecto para cargar los datos de la empresa si estamos editando
   useEffect(() => {
+    // Si estamos editando, cargamos los datos existentes en el estado del formulario
     if (editingEmpresaAseguradora) {
-      setFormData({ ...editingEmpresaAseguradora });
+      setFormData({
+        ...editingEmpresaAseguradora,
+        // Convertimos el string de fecha ISO a un objeto Date para el componente de calendario
+        fecha_contratacion: editingEmpresaAseguradora.fecha_contratacion
+          ? new Date(editingEmpresaAseguradora.fecha_contratacion)
+          : undefined,
+      });
+    } else {
+      // Si no estamos editando, reiniciamos el formulario
+      setFormData(initialFormData);
     }
   }, [editingEmpresaAseguradora, setFormData]);
 
@@ -84,13 +104,15 @@ function EmpresaAseguradoraForm({
 
     const method = editingEmpresaAseguradora ? 'PUT' : 'POST';
 
+    // Preparamos los datos para el envío
+    const dataToSend = {
+      ...formData,
+      // Convertimos el objeto Date a un string ISO para la API
+      fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString() : undefined,
+    };
+    
     try {
-      // ############ LÍNEA AÑADIDA PARA DEPURACIÓN ############
-      console.log('Datos que se enviarán al backend:', {
-        ...formData,
-        fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString() : undefined,
-      });
-      // ########################################################
+      console.log('Datos que se enviarán al backend:', dataToSend);
 
       const response = await fetch(url, {
         method: method,
@@ -98,11 +120,7 @@ function EmpresaAseguradoraForm({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          // La API puede esperar la fecha como un string ISO
-          fecha_contratacion: formData.fecha_contratacion ? formData.fecha_contratacion.toISOString() : undefined,
-        }),
+        body: JSON.stringify(dataToSend),
       });
 
       if (!response.ok) {
@@ -166,6 +184,20 @@ function EmpresaAseguradoraForm({
           error={error && error.includes('RIF') ? error : null}
         />
 
+        {/* Campo Email */}
+        <StyledFormField
+          label="Email"
+          id="email"
+          name="email"
+          type="email"
+          placeholder="email@ejemplo.com"
+          value={formData.email || ''}
+          onChange={handleChange}
+          required
+          disabled={isSubmitting}
+          error={error && error.includes('email') ? error : null}
+        />
+
         {/* Campo Teléfono */}
         <StyledFormField
           label="Teléfono"
@@ -175,6 +207,7 @@ function EmpresaAseguradoraForm({
           placeholder="Número de teléfono (Ej: +584123456789)"
           value={formData.telefono || ''}
           onChange={handleChange}
+          required
           disabled={isSubmitting}
           error={error && error.includes('teléfono') ? error : null}
         />
@@ -193,8 +226,7 @@ function EmpresaAseguradoraForm({
           error={error && error.includes('dirección') ? error : null}
         />
 
-        {/* Campo Fecha de Contratación (Añadido para el ejemplo) */}
-        {/*
+        {/* Campo Fecha de Contratación */}
         <StyledFormField
           label="Fecha de Contratación"
           id="fecha_contratacion"
@@ -207,7 +239,6 @@ function EmpresaAseguradoraForm({
           disabled={isSubmitting}
           error={error && error.includes('fecha') ? error : null}
         />
-        */}
 
         {error && <p className="text-red-500 text-sm md:col-span-2">{error}</p>}
 
